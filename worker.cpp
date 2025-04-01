@@ -1,6 +1,6 @@
 //Written by Yosef Alqufidi
-//Date 3/18/25
-//updated from project 2
+//Date 4/10/25
+//updated from project 3
 
 #include <iostream>
 #include <unistd.h>
@@ -8,16 +8,10 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/msg.h>
-#include <cstdio>
-#include <cstring>
+#include <ctime>
+#include <string>
 
 using namespace std;
-
-//Shared memory clock structure
-struct ClockDigi{
-	int sysClockS;
-	int sysClockNano;
-};
 
 //message struct
 struct Message{
@@ -28,122 +22,57 @@ struct Message{
 //logic for shared memory
 int main(int argc, char** argv){
 	if(argc !=3){
-		cout<<"Error please use two arguments for:"<< argv[0] <<"\n";
+		cout<<"Usage:"<< argv[0] << " <term_BS> <term_BN>" <<endl;
 		return EXIT_FAILURE;
 	}
 
 
-//start parseing time
-int Secval = atoi(argv[1]);
-int Nanoval = atoi(argv[2]);
-
-//shared memory key
-key_t shmKey= 6321;
-
-//access to shared memory
-int shmid = shmget(shmKey, sizeof(ClockDigi), 0666);
-if(shmid < 0){
-	perror("shmget");
-	return EXIT_FAILURE;
-}
-
-ClockDigi* clockVal = (ClockDigi*) shmat(shmid, nullptr, 0);
-if (clockVal == (void*) -1){
-	perror("shmat");
-	return EXIT_FAILURE;
-}
-
-//start reading from simulated clock 
-int startSec = clockVal->sysClockS;
-int startNano = clockVal->sysClockNano;
-
-//termination
-int termSec = startSec + Secval;
-int termNano = startNano + Nanoval;
-
-if(termNano >= 1000000000){
-	termSec += termNano / 1000000000;
-	termNano = termNano % 1000000000;
-}
-
+//termination bounds
+int termBS = atoi(argv[1]);
+int termBN = atoi(argv[2]);
 
 //message queue
 key_t msgKey = 6321;
 int msgid = msgget(msgKey, 0666);
 if(msgid < 0){
 	perror("msgget");
-	shmdt(clockVal);
 	return EXIT_FAILURE;
 }
 
-//outputs
-//...........................................................................................
-cout << "WORKER PID: " << getpid()
-         << " PPID: " << getppid()
-         << " SysClockS: " << clockVal->sysClockS
-         << " SysclockNano: " << clockVal->sysClockNano
-         << " TermTimeS: " << termSec
-         << " TermTimeNano: " << termNano << "\n";
-         cout << "--JUST STARTING" << "\n";
-	
-	int iteration = 0;
-	Message msg;
+//RNG 
+srand(time(NULL) ^ getpid());
 
-//checks and busy wait	 
-while (true){
-//waiting for message
-	if(msgrcv(msgid, &msg, sizeof(msg.data), getpid(),0) == -1){
+//probabilities
+//termination 10%
+const double TERM_PROB = 0.1; 
+//I/O 20%
+const double IO_PROB = 0.2;
+
+//loop for scheduling messages
+while(true){
+	Message schedMsg;
+	if(msgrcv(msgid, &schedMsg, sizeof(schedMsg.data), getpid(), 0) == -1){
 		perror("msgrcv");
 		break;
 	}
 
-	iteration++;
-//read from clock
-	int curr_Sec = clockVal->sysClockS;
-	int curr_Nano = clockVal->sysClockNano;
+//time slice
+int quantum = schedMsg.data;
+cout<< "WORKER PID:" <<getpid()<< "recived quantum:" << quantum << "ns" <<endl;
 
-//outputs
-//...........................................................................................	
-    cout << "WORKER PID: " << getpid()
-         << " PPID: " << getppid()
-         << " SysClockS: " << curr_Sec
-         << " SysclockNano: " << curr_Nano
-         << " TermTimeS: " << termSec
-         << " TermTimeNano: " << termNano << "\n";
-    cout << "--" << iteration << "iteration"
-	 << (iteration == 1 ? "has" : "s have")
-	 << "passed since starting\n";
-
-//send back message    
-   Message reply;
-   reply.mtype = getpid(); 
-  
-
-    //checks to term or not
-if(curr_Sec > termSec || (curr_Sec == termSec && curr_Nano >= termNano)){  
-    cout << "WORKER PID: " << getpid()
-         << " PPID: " << getppid()
-         << " SysClockS: " << curr_Sec
-         << " SysclockNano: " << curr_Nano
-         << " TermTimeS: " << termSec
-         << " TermTimeNano: " << termNano << "\n";
-    cout << "--Terminating after sending message back to oss" 
-	    << iteration << "iterations.\n";
-    reply.data = 0;
-    if(msgsnd(msgid, &reply, sizeof(reply.data), 0) == -1){
-	    perror("msgsnd");
-    }
-    break;
-}else{
-	reply.data = 1;
-	if(msgsnd(msgid, &reply, sizeof(reply.data), 0) == -1){
+int usage = (rand() % (quantum - 1)) + 1;
+Message response;
+response.mtype = getpid();
+double r = (double)rand() / RAND_MAX;
+if(r < TERM_PROB){
+	response.data = -usage;
+	cout<< "WORKER PID:" << getpid()<< "terminating after usage" << usage <<"ns" <<endl;
+	if(msgsnd(msgid, &response, sizeof(response.data), 0) == -1){
 		perror("msgsnd");
 	}
-    }
+	break;
 }
-    
-    shmdt(clockVal);
+	else if(r < TERM_PROB
 
-    return EXIT_SUCCESS;
-}
 
+	
