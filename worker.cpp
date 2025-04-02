@@ -72,7 +72,19 @@ if(r < TERM_PROB){
 	}
 	break;
 }
-	else if(r < TERM_PROB
+	else if(r < TERM_PROB + IO_PROB){
+		response.data = usage;
+		cout<< "WORKER PID:" <<getpid()<< "preempted by I/O after" << usage << "ns" <<endl;
+	}else{
+	response.data = quantum;
+		cout<< "WORKER PID:" <<getpid()<< "used full quantum of" << quantum << "ns" <<endl;
+	}
 
+//respond to oss
+if(msgsnd(msgid, &response, sizeof(response.data), 0) == -1){
+	perror("msgsnd");
+	}
+}
+return EXIT_SUCCESS;
+}
 
-	
