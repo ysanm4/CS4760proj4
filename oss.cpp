@@ -1,6 +1,6 @@
 //Written by Yosef Alqufidi
-//Date 3/18/25
-//updated from project 2
+//Date 4/10/25
+//updated from project 3
 
 
 #include <iostream>
@@ -16,20 +16,28 @@
 #include <ctime>
 #include <string>
 #include <sys/msg.h>
+#include <queue>
 
 using namespace std;
 
 //PCB tracking children
 
 #define PROCESS_TABLE 20
+#define MAX_PROCESSES 100
 
+//based time quantum
+const long long BASE_QUAN = 10000000LL;
 //struct for PCB
 struct PCB{
 	int occupied;
 	pid_t pid;
 	int startSeconds;
 	int startNano;
-	int messagesSent;
+	int serviceTimeSeconds;
+	int serviceTimeNano;
+	int eventWaitSec;
+	int eventWaitNano;
+	int blocked;
 };
 
 //struct for clock
@@ -54,26 +62,73 @@ int msgid;
 
 ofstream logFile;
 
+//multi-level feedback queue from highest to lowest priority level
+queue<int> readyQueue1;
+queue<int> readyQueue2;
+queue<int> readyQueue3;
+//blocked queue
+queue<int> blockedQueue;
+
+
 //print process table to screen and logfile
 void printProcessTable(){
 	cout<<"Process Table:-------------------------------------------------------------------------------\n";
-	cout<<"Entry\tOccupied\tPID\tStartS\tStartN\tMessagesSent\n";
+	cout<<"Entry\tOccupied\tPID\tStartS\tStartN\tService\tBlocked\n";
 	logFile<<"Process Table::-------------------------------------------------------------------------------\n";
-	logFile << "Entry\tOccupied\tPID\tStartS\tStartN\tMessagesSent\n";
+	logFile << "Entry\tOccupied\tPID\tStartS\tStartN\tService\tBlocked\n";
     for (int i = 0; i < PROCESS_TABLE; i++) {
         cout << i << "\t" << processTable[i].occupied << "\t\t"
-             << processTable[i].pid << "\t"
-             << processTable[i].startSeconds << "\t"
-             << processTable[i].startNano << "\t"
-             << processTable[i].messagesSent << "\n";
+             << processTable[i].pid << "\t" 
+             << processTable[i].startSeconds << "\t" 
+             << processTable[i].startNano << "\t" 
+             << processTable[i].serviceTimeSeconds << ":" 
+             << processTable[i].serviceTimeNano << "\t\t" 
+             << processTable[i].blocked << "\n";
         logFile << i << "\t" << processTable[i].occupied << "\t\t"
-                << processTable[i].pid << "\t"
-                << processTable[i].startSeconds << "\t"
-                << processTable[i].startNano << "\t"
-                << processTable[i].messagesSent << "\n";
+                << processTable[i].pid << "\t" 
+                << processTable[i].startSeconds << "\t" 
+                << processTable[i].startNano << "\t" 
+                << processTable[i].serviceTimeSeconds << ":" 
+                << processTable[i].serviceTimeNano << "\t\t" 
+                << processTable[i].blocked << "\n";
     }
-    cout.flush();
-    logFile.flush();
+    cout<<"Ready queue 1:";
+    logFile<<"Ready queue 1:";
+    queue<int> tmp = readyQueue1;
+    while(!tmp.empty()){
+	    cout<<tmp.front()<<" ";
+	    logFile << tmp.front() << " ";
+        tmp.pop();
+    }
+
+    cout<<"\nReady queue 2:";
+    logFile<<"\nReady queue 2:";
+    queue<int> tmp = readyQueue2;
+    while(!tmp.empty()){
+            cout<<tmp.front()<<" ";
+            logFile << tmp.front() << " ";
+        tmp.pop();
+    }
+
+    cout<<"\nReady queue 3:";
+    logFile<<"\nReady queue 3:";
+    queue<int> tmp = readyQueue3;
+    while(!tmp.empty()){
+            cout<<tmp.front()<<" ";
+            logFile << tmp.front() << " ";
+        tmp.pop();
+    }
+
+   
+    cout<<"\nBlocked queue::";
+    logFile<<"\nBlocked queue:";
+    tmp = blockedQueue;
+    while(!tmp.empty()){
+            cout<<tmp.front()<<" ";
+            logFile << tmp.front() << " ";
+        tmp.pop();
+    }
+
 }
 
 void signal_handler(int sig) {
@@ -191,7 +246,11 @@ for(int i = 0; i < PROCESS_TABLE; i++){
 	processTable[i].pid = 0;
 	processTable[i].startSeconds = 0;
 	processTable[i].startNano = 0;
-	processTable[i].messagesSent = 0;
+	processTable[i].serviceTimeSeconds = 0;
+	processTable[i].serviceTimeNano = 0;
+        processTable[i].eventWaitSec = 0;
+        processTable[i].eventWaitNano = 0;
+        processTable[i].blocked = 0;
 }
 
 //message queues
