@@ -264,11 +264,11 @@ msgid = msgget(msgKey, IPC_CREAT | 0666);
 	}
 
 
-//signal and alarm to terminate after 60 real life seconds
+//signal and alarm to terminate after 3 real life seconds
 
 signal(SIGALRM, signal_handler);
 signal(SIGINT, signal_handler);
-alarm(60);
+alarm(3);
 srand(time(NULL));
 
 //counters 
@@ -276,108 +276,53 @@ srand(time(NULL));
 int laun = 0;
 //running child
 int runn = 0;
-//meassages sent
-int totalMessagesSent = 0;
-//tracking final printing 
+//tracking process launch time 
 long long lastPrintTime = 0;
-long long lastLaunchedTime = 0;
+long long nextLaunchTime = (long long)(rand() % (i_case * 1000000));
+long long currentTime = 0;
+long long totalServiceTime = 0;
+long long totalIdleTime = 0;
 
 //clock simulation -----------------------------------------------------------------------------------------------------------------
 //launch intervals
-long long  launchInterval = (long long)i_case * 10000000LL;
 
-int nextMsgIndex = 0;
 
-//increment the clock by 250ms
+//increment the clock by 10000ms
 while(laun < n_case || runn > 0){
-	long long increment;
-	if(runn > 0){
-		increment = 250000000LL / runn;
-	}else{
-		increment = 250000000LL;
-	}
-	long long totalNano = (long long)clockVal->sysClockS * 1000000000LL +
-		clockVal->sysClockNano + increment;
+	long long overhead = 10000;
+	long long totalNano = (long long)clockVal->sysClockS * 1000000000LL + clockVal->sysClockNano + overhead;
 	clockVal->sysClockS = totalNano / 1000000000LL;
 	clockVal->sysClockNano = totalNano % 1000000000LL;
+	currentTime = (long long)clockVal->sysClockS * 1000000000LL + clockVal->sysClockNano;
 
-	long long currentTime = (long long)clockVal->sysClockS * 1000000000LL +
-		clockVal->sysClockNano;
-	if(currentTime - lastPrintTime >= 500000000LL){
-		cout<<"OSS PID:" << getpid() <<"SysClock:"
-			<< clockVal->sysClockS <<":"<< clockVal->sysClockNano <<"\n";
-		logFile <<"OSS PID:" <<getpid() <<"SysClock:"
-			<< clockVal->sysClockS <<":"<< clockVal->sysClockNano << "\n";
-		printProcessTable();
-		lastPrintTime = currentTime;
-	}
+//blocked queue wait time
+	int blockedCount = blockedQueue.size();
+	for(int i = 0; i < blockedCount; i++){
+		int idx = blockedQueue.front();
+		blockedQueue.pop();
+		long long eventTime = (long long)processTable[idx].eventWaitSec * 1000000000LL + processTable[idx].eventWaitNano;
 
-	int startIndex = nextMsgIndex;
-	bool found = false;
-	int activeIndex = -1;
+	if(currentTime >= eventTime){
+		processTable[idx].blocked = 0;
+		readyQueue1.push(idx);
+		cout<<"OSS: Unblocking process at PCB index"<< idx <<"\n";
+		logFile << "OSS: Unblocking process at PCB index " << idx << "\n";
+            } else {
+                blockedQueue.push(idx);
+            }
+        }
+
+//launch new process when PCB free
+	if(laun < n_case && currentTime >= nextLaunchTime){
+	int freeIndex = -1;
 	for(int i = 0; i < PROCESS_TABLE; i++){
-		int idx = (startIndex + i) % PROCESS_TABLE;
-		if (processTable[idx].occupied){
-			activeIndex = idx;
-			found = true;
+		if(!processTable[i].occupied){
+			freeIndex = i;
 			break;
 		}
 	}
-	if(found){
-		Message msg;
-		msg.mtype = processTable[activeIndex].pid;
-		msg.data = 1;
-		if(msgsnd(msgid, &msg, sizeof(msg.data), 0) == -1){
-			perror("msgsnd");
-		}else{
-			processTable[activeIndex].messagesSent++;
-			totalMessagesSent++;
-		cout<< "OSS: sending message to worker" << activeIndex
-		    << "PID" << processTable[activeIndex].pid
-		    << " at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
-	
-    logFile << "OSS: Sending message to worker" << activeIndex
-             << " PID " << processTable[activeIndex].pid
- 	     << " at time " << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
-		}
-
-
-	Message reply;
-	if(msgrcv(msgid, &reply, sizeof(reply.data), processTable[activeIndex].pid, 0) == -1){
-		perror("msgrcv");
-	}else{
-		cout<<"OSS: Recived message from worker" << activeIndex
-			<<"PID"<< processTable[activeIndex].pid
-			<<"at time"<< clockVal->sysClockS<<":"<<clockVal->sysClockNano<<"\n";
-		logFile<<"OSS: recived message from worker"<< activeIndex
-			<<"PID"<< processTable[activeIndex].pid
-			<<"at time"<< clockVal->sysClockS<<":"<< clockVal->sysClockNano<<"\n";
-
-
-		if(reply.data == 0){
-			cout<<"OSS: worker"<< activeIndex<< "PID"
-			<<processTable[activeIndex].pid<<" is terminating\n";
-
-			logFile<<"OSS:Worker"<< activeIndex<< "PID"
-			<<processTable[activeIndex].pid<<" is terminating\n";
-
-			waitpid(processTable[activeIndex].pid, nullptr, 0);
-
-			processTable[activeIndex].occupied = 0;
-                    processTable[activeIndex].pid = 0;
-                    processTable[activeIndex].startSeconds = 0;
-                    processTable[activeIndex].startNano = 0;
-                    processTable[activeIndex].messagesSent = 0;
-                    runn--;
-		}
-	}
-
-	nextMsgIndex = (activeIndex + 1) % PROCESS_TABLE;
-	}
-
-//launch new children depends on condition
-	if(laun < n_case && runn < s_case && (currentTime - lastLaunchedTime >= launchInterval)){
-
+//term bound	
+	if(freeIndex != -1){
 		int childOffsetSec = (rand() % t_case) + 1;
 		int childOffsetNano = rand() % 1000000000;
 //fork		
@@ -394,31 +339,23 @@ while(laun < n_case || runn > 0){
                 exit(EXIT_FAILURE);
             } else {
                 
-                for (int i = 0; i < PROCESS_TABLE; i++) {
-                    if (!processTable[i].occupied) {
-                        processTable[i].occupied = 1;
-                        processTable[i].pid = pid;
-                        processTable[i].startSeconds = clockVal->sysClockS;
-                        processTable[i].startNano = clockVal->sysClockNano;
-                        processTable[i].messagesSent = 0;
-                        break;
-                    }
-                }
+                    processTable[freeIndex].occupied = 1;
+                    processTable[freeIndex].pid = pid;
+                    processTable[freeIndex].startSeconds = clockVal->sysClockS;
+                    processTable[freeIndex].startNano = clockVal->sysClockNano;
+                    processTable[freeIndex].serviceTimeSeconds = 0;
+                    processTable[freeIndex].serviceTimeNano = 0;
+                    processTable[freeIndex].blocked = 0;
+		    readyQueue1.push(freeIndex);
 		laun++;
 		runn++;
 		lastLaunchedTime = currentTime;
-
-		cout << "After launching new child, process table:\n";
-                logFile << "After launching new child, process table:\n";
-                printProcessTable();
+		cout<<"OSS: launched new process, PCB index"<< freeIndex <<"\n";
+		logFile<<"OSS: launched new process, PCB index"<< freeIndex <<"\n";
             }
         }
+	nextLaunchTime = currentTime + (rand() % (i_case * 1000000));
     }
-
-	cout << "SIMULATION COMPLETED. Total processes launched: " << laun
-         << "Total messages sent: " << totalMessagesSent << "\n";
-    	logFile << "SIMULATION COMPLETED. Total processes launched: " << laun
-            << "Total messages sent: " << totalMessagesSent << "\n";
 
 //cleanup and close
     shmdt(clockVal);
