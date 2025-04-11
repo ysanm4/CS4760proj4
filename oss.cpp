@@ -357,6 +357,78 @@ while(laun < n_case || runn > 0){
 	nextLaunchTime = currentTime + (rand() % (i_case * 1000000));
     }
 
+//selecting process from queue
+int scheduledIndex = -1;
+int level = 0;
+long long timeQuantum = 0;
+if(!readyQueue1.empty()){
+	scheduledIndex = readyQueue1.front();
+	readyQueue1.pop();
+	level = 1;
+	timeQuantum = BASE_QUANTUM;
+}
+else if(!readyQueue2.empty()){
+        scheduledIndex = readyQueue2.front();
+        readyQueue2.pop();
+        level = 2;
+        timeQuantum = 2 * BASE_QUANTUM;
+}
+else if(!readyQueue3.empty()){
+        scheduledIndex = readyQueue3.front();
+        readyQueue3.pop();
+        level = 3;
+        timeQuantum = 4 * BASE_QUANTUM;
+}else{
+	long long idleIncrement = 100000000LL;
+	totalIdleTime += idleIncrement;
+	totalNano = (long long)clockVal->sysClockS * 1000000000LL + clockVal->sysClockNano + idleIncrement;
+	clockVal->sysClockS = totalNano / 1000000000LL;
+	clockVal->sysClockNano = totalNano % 1000000000LL;
+	continue;
+}
+
+//scheduling overhead
+overhead = 10000;
+totalNano = (long long)clockVal->sysClockS * 1000000000LL + clockVal->sysClockNano + overhead;
+
+clockVal->sysClockS = totalNano / 1000000000LL;
+clockVal->sysClockNano = totalNano % 1000000000LL;
+currentTime = (long long)clockVal->sysClockS * 1000000000LL + clockVal->sysClockNano;
+
+//send message to process
+Message schedMsg;
+schedMsg.mtype = processTable[scheduledIndex].pid;
+schedMsg.data = timeQuantum;
+if(msgsnd(msgid, &schedMsg, sizeof(schedMsg.data), 0) == -1){
+	perror("msgsnd");
+}else{
+	cout<<"OSS: scheduled PCB idx"<< scheduledIndex
+	<<"PID"<< processTable[scheduledIndex].pid << "with quantum" << timeQuantum << "ns at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
+	 logFile<<"OSS: scheduled PCB idx"<< scheduledIndex
+        <<"PID"<< processTable[scheduledIndex].pid << "with quantum" << timeQuan
+tum << "ns at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "
+\n";
+}
+
+//message response from process
+Message response;
+if(msgrcv(msgid, &response, sizeof(response.data), processTable[scheduledIndex].pid, 0) == -1){
+	perror("msgrcv");
+}else{
+	int respTime = response.data;
+	processTable[scheduledIndex].serviceTimeNano += abs(respTime);
+	while(processTable[scheduledIndex].serviceTimeNano >= 1000000000){
+		processTable[scheduledIndex].serviceTimeNano -= 1000000000;
+		processTable[scheduledIndex].serviceTimeSeconds++;
+	}
+	totalServiceTime += abs(respTime);
+
+	if(respTime == timeQuantum){
+		cout<<"OSS: PCB index"<< scheduledIndex <<"used full quantum\n";
+		logFile<<"OSS: PCB index"<< scheduledIndex <<"used full quantum\n";
+
+
+
 //cleanup and close
     shmdt(clockVal);
     shmctl(shmid, IPC_RMID, NULL);
