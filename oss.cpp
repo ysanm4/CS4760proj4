@@ -427,7 +427,54 @@ if(msgrcv(msgid, &response, sizeof(response.data), processTable[scheduledIndex].
 		cout<<"OSS: PCB index"<< scheduledIndex <<"used full quantum\n";
 		logFile<<"OSS: PCB index"<< scheduledIndex <<"used full quantum\n";
 
+//demoteing process, 1 to 2, 2 to 3
+if(level == 1){
+	readyQueue2.push(scheduledIndex);
+}else if(level == 2){
+	readyQueue3.push(scheduledIndex);
+}else{
+	readyQueue3.push(scheduledIndex);
+}
+}
+	else if(respTime > 0 && respTime < timeQuantum){
+		cout<<"Oss: PCB index"<< scheduledIndex <<"preempted I/O"<< respTime <<"ns\n";
+		logFile<<"Oss: PCB index"<< scheduledIndex <<"preempted I/O"<< resp
+Time <<"ns\n";
+		int waitSec = rand() % 6;
+		int waitNano = rand() % 1000;
+		long long totalWaitNano = clockVal->sysClockNano + waitNano;
+		processTable[scheduledIndex].eventWaitSec = clockVal->sysClockS + waitSec + (totalWaitNano / 1000000000);
+		processTable[scheduledIndex].eventWaitNano = totalWaitNano % 1000000000;
+                processTable[scheduledIndex].blocked = 1;
+                blockedQueue.push(scheduledIndex);
+            } else if (respTime < 0) {
+                // Process terminated; absolute value is time used.
+                cout<<"OSS: PCB index "<< scheduledIndex <<"terminated after using"<< -respTime <<"ns\n";
+                logFile <<"OSS: PCB index"<< scheduledIndex << "terminated after using"<< -respTime <<" ns\n";
+                processTable[scheduledIndex].occupied = 0;
+                processTable[scheduledIndex].pid = 0;
+                processTable[scheduledIndex].startSeconds = 0;
+                processTable[scheduledIndex].startNano = 0;
+                processTable[scheduledIndex].serviceTimeSeconds = 0;
+                processTable[scheduledIndex].serviceTimeNano = 0;
+                processTable[scheduledIndex].eventWaitSec = 0;
+                processTable[scheduledIndex].eventWaitNano = 0;
+                processTable[scheduledIndex].blocked = 0;
+                processesRunning--;
+            }
+        }
+//pring every half second
+if(currentTime - lastPrintTime >= 500000000LL){
+	printStatus();
+	lastPrintTime = currentTime;
+	}
+}
 
+	cout<<"Simulation complete. Total processes launched: " << processesLaunched
+         <<"Total service time: "<< totalServiceTime << "ns. Total idle time:"<< totalIdleTime <<"ns\n";
+
+	logFile << "Simulation complete. Total processes launched: " << processesLaunched
+            <<"Total service time:"<< totalServiceTime <<"ns. Total idle time:"<< totalIdleTime <<"ns\n";
 
 //cleanup and close
     shmdt(clockVal);
