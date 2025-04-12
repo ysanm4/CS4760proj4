@@ -31,6 +31,9 @@ int main(int argc, char** argv){
 int termBS = atoi(argv[1]);
 int termBN = atoi(argv[2]);
 
+(void)termBS;
+(void)termBN;
+
 //message queue
 key_t msgKey = 6321;
 int msgid = msgget(msgKey, 0666);

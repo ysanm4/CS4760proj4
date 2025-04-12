@@ -26,7 +26,7 @@ using namespace std;
 #define MAX_PROCESSES 100
 
 //based time quantum
-const long long BASE_QUAN = 10000000LL;
+const long long BASE_QUANTUM = 10000000LL;
 //struct for PCB
 struct PCB{
 	int occupied;
@@ -94,41 +94,49 @@ void printProcessTable(){
     }
     cout<<"Ready queue 1:";
     logFile<<"Ready queue 1:";
+    {
     queue<int> tmp = readyQueue1;
     while(!tmp.empty()){
 	    cout<<tmp.front()<<" ";
 	    logFile << tmp.front() << " ";
         tmp.pop();
     }
+}
 
     cout<<"\nReady queue 2:";
     logFile<<"\nReady queue 2:";
+{
     queue<int> tmp = readyQueue2;
     while(!tmp.empty()){
             cout<<tmp.front()<<" ";
             logFile << tmp.front() << " ";
         tmp.pop();
     }
+}
 
     cout<<"\nReady queue 3:";
     logFile<<"\nReady queue 3:";
+{
     queue<int> tmp = readyQueue3;
     while(!tmp.empty()){
             cout<<tmp.front()<<" ";
             logFile << tmp.front() << " ";
         tmp.pop();
     }
+}
 
    
     cout<<"\nBlocked queue::";
     logFile<<"\nBlocked queue:";
-    tmp = blockedQueue;
+{
+    queue<int> tmp = blockedQueue;
     while(!tmp.empty()){
             cout<<tmp.front()<<" ";
             logFile << tmp.front() << " ";
         tmp.pop();
     }
 
+}
 }
 
 void signal_handler(int sig) {
@@ -183,6 +191,7 @@ int main( int argc, char *argv[]){
 
 			case 's':
 				s_case = atoi(optarg);
+				(void)s_case;
 				s_var = true;
 				break;
 
@@ -282,6 +291,8 @@ long long nextLaunchTime = (long long)(rand() % (i_case * 1000000));
 long long currentTime = 0;
 long long totalServiceTime = 0;
 long long totalIdleTime = 0;
+long long lastLaunchedTime = 0;
+(void)lastLaunchedTime;
 
 //clock simulation -----------------------------------------------------------------------------------------------------------------
 //launch intervals
@@ -405,9 +416,7 @@ if(msgsnd(msgid, &schedMsg, sizeof(schedMsg.data), 0) == -1){
 	cout<<"OSS: scheduled PCB idx"<< scheduledIndex
 	<<"PID"<< processTable[scheduledIndex].pid << "with quantum" << timeQuantum << "ns at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
 	 logFile<<"OSS: scheduled PCB idx"<< scheduledIndex
-        <<"PID"<< processTable[scheduledIndex].pid << "with quantum" << timeQuan
-tum << "ns at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "
-\n";
+        <<"PID"<< processTable[scheduledIndex].pid << "with quantum" << timeQuantum << "ns at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
 }
 
 //message response from process
@@ -438,8 +447,7 @@ if(level == 1){
 }
 	else if(respTime > 0 && respTime < timeQuantum){
 		cout<<"Oss: PCB index"<< scheduledIndex <<"preempted I/O"<< respTime <<"ns\n";
-		logFile<<"Oss: PCB index"<< scheduledIndex <<"preempted I/O"<< resp
-Time <<"ns\n";
+		logFile<<"Oss: PCB index"<< scheduledIndex <<"preempted I/O"<< respTime <<"ns\n";
 		int waitSec = rand() % 6;
 		int waitNano = rand() % 1000;
 		long long totalWaitNano = clockVal->sysClockNano + waitNano;
@@ -460,20 +468,20 @@ Time <<"ns\n";
                 processTable[scheduledIndex].eventWaitSec = 0;
                 processTable[scheduledIndex].eventWaitNano = 0;
                 processTable[scheduledIndex].blocked = 0;
-                processesRunning--;
+                runn--;
             }
         }
 //pring every half second
 if(currentTime - lastPrintTime >= 500000000LL){
-	printStatus();
+	printProcessTable();
 	lastPrintTime = currentTime;
 	}
 }
 
-	cout<<"Simulation complete. Total processes launched: " << processesLaunched
+	cout<<"Simulation complete. Total processes launched: " << laun
          <<"Total service time: "<< totalServiceTime << "ns. Total idle time:"<< totalIdleTime <<"ns\n";
 
-	logFile << "Simulation complete. Total processes launched: " << processesLaunched
+	logFile << "Simulation complete. Total processes launched: " << laun
             <<"Total service time:"<< totalServiceTime <<"ns. Total idle time:"<< totalIdleTime <<"ns\n";
 
 //cleanup and close
