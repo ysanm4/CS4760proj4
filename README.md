@@ -8,10 +8,9 @@ Step 1, Compile: In the command line type "make" which will compile both the use
 
 Step 2, Running the files: After you compile with make, run ./oss -h to display the help menu.
 
-Step 3, Running oss file with other parameters: Now you can try running oss like this. ./oss -n 3 -s 2 -t 2 -i 100 -f logfile.txt.
+Step 3, Running oss file with other parameters: Now you can try running oss by simply running ./oss which will auto populate, or by running ./oss -n 3 -s 2 -t 2 -i 100 -f logfile.txt. You can also select your own parameters.
 
-Step 4, Checking logfile: Make sure to open logfile to check its contents.
+Step 4, Checking logfile: Make sure to open logfile to check it's contents. Keep in mind if you just run ./oss with no parameter inputs, the log file will be named oss.log.
 
-Do not run ./oss -n 1 -s 1 without including -t, -i, and -f or ./oss -n 1 by itself because nothing will end up happening and you will get an error message telling you that, you will need to run all 3 together. You will need to give all inputs!
 
 Check GitHub link for version control:https://github.com/ysanm4/CS4760proj4

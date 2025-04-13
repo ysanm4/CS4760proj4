@@ -1,5 +1,5 @@
 //Written by Yosef Alqufidi
-//Date 4/10/25
+//Date 4/15/25
 //updated from project 3
 
 #include <iostream>
@@ -61,7 +61,7 @@ while(true){
 
 //time slice
 int quantum = schedMsg.data;
-cout<< "WORKER PID:" <<getpid()<< "recived quantum:" << quantum << "ns" <<endl;
+cout<< "WORKER PID: " <<getpid()<< " recived quantum: " << quantum << "ns" <<endl;
 
 int usage = (rand() % (quantum - 1)) + 1;
 Message response;
@@ -69,7 +69,7 @@ response.mtype = getpid();
 double r = (double)rand() / RAND_MAX;
 if(r < TERM_PROB){
 	response.data = -usage;
-	cout<< "WORKER PID:" << getpid()<< "terminating after usage" << usage <<"ns" <<endl;
+	cout<< "WORKER PID: " << getpid()<< " terminating after usage " << usage <<"ns" <<endl;
 	if(msgsnd(msgid, &response, sizeof(response.data), 0) == -1){
 		perror("msgsnd");
 	}
@@ -77,10 +77,10 @@ if(r < TERM_PROB){
 }
 	else if(r < TERM_PROB + IO_PROB){
 		response.data = usage;
-		cout<< "WORKER PID:" <<getpid()<< "preempted by I/O after" << usage << "ns" <<endl;
+		cout<< "WORKER PID: " <<getpid()<< " preempted by I/O after " << usage << "ns" <<endl;
 	}else{
 	response.data = quantum;
-		cout<< "WORKER PID:" <<getpid()<< "used full quantum of" << quantum << "ns" <<endl;
+		cout<< "WORKER PID: " <<getpid()<< " used full quantum of " << quantum << "ns" <<endl;
 	}
 
 //respond to oss

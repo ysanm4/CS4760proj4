@@ -1,5 +1,5 @@
 //Written by Yosef Alqufidi
-//Date 4/10/25
+//Date 4/15/25
 //updated from project 3
 
 
@@ -92,8 +92,10 @@ void printProcessTable(){
                 << processTable[i].serviceTimeNano << "\t\t" 
                 << processTable[i].blocked << "\n";
     }
-    cout<<"Ready queue 1:";
-    logFile<<"Ready queue 1:";
+
+//multilevel feedback queue    
+    cout<<" Ready queue 1: ";
+    logFile<<" Ready queue 1: ";
     {
     queue<int> tmp = readyQueue1;
     while(!tmp.empty()){
@@ -126,7 +128,7 @@ void printProcessTable(){
 }
 
    
-    cout<<"\nBlocked queue::";
+    cout<<"\nBlocked queue:";
     logFile<<"\nBlocked queue:";
 {
     queue<int> tmp = blockedQueue;
@@ -162,12 +164,12 @@ if(logFile.is_open()){
 //adding command line args for parse
 int main( int argc, char *argv[]){
 	
-	int n_case = 0;
-	int s_case = 0;
-	int t_case = 0;
-	int i_case = 0;
-	string logFileName;
-	bool n_var = false, s_var = false, t_var = false, i_var = false, f_var = false;
+	int n_case = 10;
+	int s_case = 3;
+	int t_case = 5;
+	int i_case = 100;
+	string logFileName = "oss.log";
+//	bool n_var = false, s_var = false, t_var = false, i_var = false, f_var = false;
 	int opt;
 
 //setting up the parameters for h,n,s,t,i, and f
@@ -181,32 +183,33 @@ int main( int argc, char *argv[]){
 			cout<< "-t: iterations\n";
 			cout<< "-f: logfile\n";
 			cout<< "To run try ./oss -n 1 -s 1 -t 1 -i 100 -f logfile.txt\n";
+			cout<< "Or just simply run ./oss and it will auto populate\n";
 
 	return EXIT_SUCCESS;
 
 			case 'n':
 				n_case = atoi(optarg);
-				n_var = true;
+//				n_var = true;
 				break;
 
 			case 's':
 				s_case = atoi(optarg);
 				(void)s_case;
-				s_var = true;
+//				s_var = true;
 				break;
 
 			case 't':
 				t_case = atoi(optarg);
-				t_var = true;
+//				t_var = true;
 				break;
 
 			case 'i':
 				i_case = atoi(optarg);
-				i_var = true;
+//				i_var = true;
 				break;
 			case 'f':
                 		logFileName = optarg;
-             			f_var = true;
+//             			f_var = true;
                 		break;
 
 			default:
@@ -217,10 +220,10 @@ int main( int argc, char *argv[]){
 	}
 
 //only allow all three to be used together and not by itself 	
-	if(!n_var || !s_var || !t_var || !i_var || !f_var){
-		cout<<"ERROR: You cannot do one alone please do -n, -s, -t,-i and -f together.\n";
-			return EXIT_FAILURE;
-	}
+//	if(!n_var || !s_var || !t_var || !i_var || !f_var){
+//		cout<<"ERROR: You cannot do one alone please do -n, -s, -t,-i and -f together.\n";
+//			return EXIT_FAILURE;
+//	}
 //error checking for logfile
 	logFile.open(logFileName.c_str());
 	if(!logFile){
@@ -316,8 +319,8 @@ while(laun < n_case || runn > 0){
 	if(currentTime >= eventTime){
 		processTable[idx].blocked = 0;
 		readyQueue1.push(idx);
-		cout<<"OSS: Unblocking process at PCB index"<< idx <<"\n";
-		logFile << "OSS: Unblocking process at PCB index " << idx << "\n";
+		cout<<"OSS: Unblocking process at PCB "<< idx <<"\n";
+		logFile << "OSS: Unblocking process at PCB " << idx << "\n";
             } else {
                 blockedQueue.push(idx);
             }
@@ -361,14 +364,14 @@ while(laun < n_case || runn > 0){
 		laun++;
 		runn++;
 		lastLaunchedTime = currentTime;
-		cout<<"OSS: launched new process, PCB index"<< freeIndex <<"\n";
-		logFile<<"OSS: launched new process, PCB index"<< freeIndex <<"\n";
+		cout<<"OSS: launched new process, PCB "<< freeIndex <<"\n";
+		logFile<<"OSS: launched new process, PCB "<< freeIndex <<"\n";
             }
         }
 	nextLaunchTime = currentTime + (rand() % (i_case * 1000000));
     }
 
-//selecting process from queue
+//selecting process from multilevel feedback queue
 int scheduledIndex = -1;
 int level = 0;
 long long timeQuantum = 0;
@@ -413,10 +416,10 @@ schedMsg.data = timeQuantum;
 if(msgsnd(msgid, &schedMsg, sizeof(schedMsg.data), 0) == -1){
 	perror("msgsnd");
 }else{
-	cout<<"OSS: scheduled PCB idx"<< scheduledIndex
-	<<"PID"<< processTable[scheduledIndex].pid << "with quantum" << timeQuantum << "ns at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
-	 logFile<<"OSS: scheduled PCB idx"<< scheduledIndex
-        <<"PID"<< processTable[scheduledIndex].pid << "with quantum" << timeQuantum << "ns at time" << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
+	cout<<"OSS: scheduled PCB "<< scheduledIndex
+	<<" PID "<< processTable[scheduledIndex].pid << " with quantum " << timeQuantum << " ns at time " << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
+	 logFile<<"OSS: scheduled PCB "<< scheduledIndex
+        <<" PID "<< processTable[scheduledIndex].pid << " with quantum " << timeQuantum << " ns at time " << clockVal->sysClockS << ":" << clockVal->sysClockNano << "\n";
 }
 
 //message response from process
@@ -433,8 +436,8 @@ if(msgrcv(msgid, &response, sizeof(response.data), processTable[scheduledIndex].
 	totalServiceTime += abs(respTime);
 
 	if(respTime == timeQuantum){
-		cout<<"OSS: PCB index"<< scheduledIndex <<"used full quantum\n";
-		logFile<<"OSS: PCB index"<< scheduledIndex <<"used full quantum\n";
+		cout<<"OSS: PCB "<< scheduledIndex <<" used full quantum\n";
+		logFile<<"OSS: PCB "<< scheduledIndex <<" used full quantum\n";
 
 //demoteing process, 1 to 2, 2 to 3
 if(level == 1){
@@ -446,8 +449,8 @@ if(level == 1){
 }
 }
 	else if(respTime > 0 && respTime < timeQuantum){
-		cout<<"Oss: PCB index"<< scheduledIndex <<"preempted I/O"<< respTime <<"ns\n";
-		logFile<<"Oss: PCB index"<< scheduledIndex <<"preempted I/O"<< respTime <<"ns\n";
+		cout<<"Oss: PCB "<< scheduledIndex <<" preempted I/O "<< respTime <<"ns\n";
+		logFile<<"Oss: PCB "<< scheduledIndex <<" preempted I/O "<< respTime <<"ns\n";
 		int waitSec = rand() % 6;
 		int waitNano = rand() % 1000;
 		long long totalWaitNano = clockVal->sysClockNano + waitNano;
@@ -457,8 +460,8 @@ if(level == 1){
                 blockedQueue.push(scheduledIndex);
             } else if (respTime < 0) {
                 // Process terminated; absolute value is time used.
-                cout<<"OSS: PCB index "<< scheduledIndex <<"terminated after using"<< -respTime <<"ns\n";
-                logFile <<"OSS: PCB index"<< scheduledIndex << "terminated after using"<< -respTime <<" ns\n";
+                cout<<"OSS: PCB "<< scheduledIndex <<" terminated after using "<< -respTime <<"ns\n";
+                logFile <<"OSS: PCB "<< scheduledIndex << " terminated after using "<< -respTime <<" ns\n";
                 processTable[scheduledIndex].occupied = 0;
                 processTable[scheduledIndex].pid = 0;
                 processTable[scheduledIndex].startSeconds = 0;
