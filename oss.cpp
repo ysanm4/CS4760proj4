@@ -164,11 +164,11 @@ if(logFile.is_open()){
 //adding command line args for parse
 int main( int argc, char *argv[]){
 	
-	int n_case = 10;
-	int s_case = 3;
-	int t_case = 5;
+	int n_case = 7;
+	int s_case = 2;
+	int t_case = 4;
 	int i_case = 100;
-	string logFileName = "oss.log";
+	string logFileName = "ossLog.txt";
 //	bool n_var = false, s_var = false, t_var = false, i_var = false, f_var = false;
 	int opt;
 
